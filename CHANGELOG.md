@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+- Translation cache shared by the GUI and the CLI (`translations.json` next to the settings
+  file): a line already translated to the same language is not sent to DeepL again. Failed
+  translations are not cached; writes are atomic and thread-safe.
+- `--no-cache` option for `mangatraductor ocr`, a `clear-cache` command, and a
+  **Clear translation cache** button in the app's API Key Settings.
+- The CLI summary and the app log say when a translation came from the cache.
+
 ### Fixed
 - The `ocr` extra now installs `fugashi` and `unidic-lite`, which the model's Japanese
   tokenizer requires; without them the model failed to load.

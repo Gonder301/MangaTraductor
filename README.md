@@ -20,6 +20,10 @@ Select a bubble with the mouse → the text is recognized with a manga-specific 
 - Export results to JSON or CSV (CSV opens correctly in Excel with Japanese text).
 - `check-key` command to diagnose DeepL API key problems.
 
+**Both**
+- Translation cache: a line already translated to the same language is reused instead of
+  being sent to DeepL again, so re-running a chapter does not use up your character quota.
+
 ## Installation
 
 Requires Python 3.10+.
@@ -45,6 +49,13 @@ The key is stored in your user settings file, never inside the repository:
 `%APPDATA%\mangatraductor\config.json` on Windows, `~/.config/mangatraductor/config.json` elsewhere
 (override with `MANGATRADUCTOR_CONFIG`). Without a key you can still OCR and type translations manually.
 
+### Translation cache
+
+Successful translations are saved in `translations.json` next to the settings file, keyed by
+the Japanese text and the source/target languages. Errors are never cached, and the oldest
+entries are dropped after 20,000 lines. To skip the cache for one run use `--no-cache`; to empty
+it use `mangatraductor clear-cache` or **API Key Settings → Clear translation cache** in the app.
+
 ## Usage
 
 ### Desktop app
@@ -65,7 +76,9 @@ Each image must contain **one cropped speech bubble** (the OCR model reads singl
 ```bash
 mangatraductor ocr bubbles/ --target-lang ES --output results.csv
 mangatraductor ocr bubble1.png bubble2.png --no-translate
+mangatraductor ocr bubbles/ --no-cache      # ask DeepL again even for cached lines
 mangatraductor check-key
+mangatraductor clear-cache
 ```
 
 `python run_ocr.py` still processes every image in `./images` as before.
@@ -78,6 +91,7 @@ mangatraductor/
   cli.py        argparse CLI: batch processing, JSON/CSV export, key check
   ocr.py        lazy wrapper around the manga-ocr model + text post-processing
   translate.py  DeepL client with timeouts and readable error messages
+  cache.py      thread-safe, on-disk translation cache shared by the GUI and the CLI
   render.py     selection mapping, word wrap, font fitting and drawing (pure Pillow)
   config.py     settings file and API key resolution
   files.py      image discovery and natural sorting
@@ -100,7 +114,7 @@ CI runs lint and tests on Python 3.10, 3.12 and 3.13 for every push.
 - [ ] Inpainting instead of a white box, to preserve screentones behind the text.
 - [ ] Vertical text layout and per-bubble font/color options.
 - [ ] Batch typesetting of a whole chapter from the CLI.
-- [ ] Translation cache to avoid paying twice for repeated lines.
+- [x] Translation cache to avoid paying twice for repeated lines.
 
 ## Credits
 
