@@ -1,56 +1,109 @@
-# MangaTraductor (OCR y Traductor de Manga)
+# MangaTraductor
 
-## Descripción General
-Una potente herramienta para extraer texto en japonés de imágenes de manga, traducirlo al inglés usando la API de DeepL y reemplazar sin problemas el texto original con la traducción en inglés. Cuenta tanto con una Interfaz Gráfica de Usuario (GUI) interactiva muy completa, como con una Interfaz de Línea de Comandos (CLI) para procesamiento por lotes.
+Desktop app and CLI to **OCR Japanese manga speech bubbles, translate them with DeepL and typeset the translation back into the page**.
 
-## Características
-- **Aplicación GUI (`manga_translator_app.py`)**:
-  - **Recorte Interactivo**: Selecciona regiones de texto directamente en la imagen con el ratón.
-  - **OCR en Tiempo Real**: Utiliza el modelo VisionEncoderDecoder de Hugging Face para un reconocimiento de texto japonés rápido y preciso.
-  - **Traducción con DeepL**: Se integra con la API de DeepL para traducir el texto japonés reconocido.
-  - **Reemplazo de Texto**: Pinta automáticamente sobre el texto japonés original en blanco y dibuja la traducción adaptándola dinámicamente a la caja delimitadora.
-  - **Navegación y Vista de Imágenes**: Soporta zoom, desplazamiento suave (`W`/`S`) y navegación rápida entre imágenes en una carpeta (`A`/`D`).
-  - **Deshacer**: Incluye la función de deshacer para los reemplazos de texto.
-- **Herramienta por Lotes CLI (`run_ocr.py`)**:
-  - Procesa automáticamente múltiples imágenes colocadas en un directorio `images`.
-  - Muestra el texto japonés extraído y su traducción en la consola.
+Select a bubble with the mouse → the text is recognized with a manga-specific OCR model → DeepL translates it → the original text is covered and the translation is drawn at the largest font size that fits.
 
-## Requisitos Previos
-Este proyecto requiere Python. Instala las dependencias necesarias usando `pip`:
+## Features
+
+**Desktop app**
+- Drag a box around a speech bubble to OCR and translate it in the background (the UI never freezes).
+- Translate to English, Spanish, Portuguese, French, German or Italian (choice is remembered).
+- Edit the translation, or type your own, before drawing it.
+- Automatic typesetting: word wrap, binary-searched font size, centered text; over-long words are split instead of overflowing.
+- Multi-level undo (`Ctrl+Z`), zoom, fit-to-width, smooth accelerated scrolling (hold `W`/`S`).
+- Folder navigation in natural order (`page2` before `page10`) with `A`/`D` or the arrow keys.
+- Shortcuts are disabled while you type in a text box.
+
+**Command line**
+- Batch OCR + translation of cropped bubbles from files or folders.
+- Export results to JSON or CSV (CSV opens correctly in Excel with Japanese text).
+- `check-key` command to diagnose DeepL API key problems.
+
+## Installation
+
+Requires Python 3.10+.
 
 ```bash
-pip install torch transformers Pillow requests
+git clone https://github.com/Gonder301/MangaTraductor.git
+cd MangaTraductor
+pip install -e ".[ocr]"
 ```
-*(Nota: `tkinter` se usa para la interfaz gráfica y normalmente viene incluido con Python por defecto).*
 
-## Configuración
+The `ocr` extra installs PyTorch and Transformers. The OCR model
+([`kha-white/manga-ocr-base`](https://huggingface.co/kha-white/manga-ocr-base)) is downloaded
+automatically the first time it is used.
 
-1. **Modelo de OCR**: La funcionalidad de OCR utiliza el modelo `kha-white/manga-ocr-base` de Hugging Face. La librería `transformers` descargará el modelo automáticamente la primera vez que ejecutes la aplicación (requiere conexión a internet inicial). No necesitas descargar ningún archivo de modelo manualmente.
-   
-2. **Archivos de Fuentes**: La aplicación utiliza `font/animeace2_reg.ttf` para dibujar el texto traducido. Asegúrate de que la fuente esté ubicada en la carpeta `font/`. Si falta, recurrirá a una fuente del sistema por defecto.
+## DeepL API key
 
-3. **Clave API de DeepL**: 
-   Necesitas una Clave API de DeepL para la traducción. Puedes obtener una clave de nivel gratuito en el [sitio web de DeepL API](https://www.deepl.com/pro-api).
-   - La aplicación almacena esto de forma segura en `user_config.json`.
-   - Puedes configurarlo fácilmente de forma directa desde la GUI haciendo clic en **API Key Settings**.
+Translation needs a DeepL API key (the [free tier](https://www.deepl.com/pro-api) works). Either:
 
-## Uso
+- click **API Key Settings** in the app, or
+- set the `DEEPL_API_KEY` environment variable (it takes precedence).
 
-### 1. Aplicación GUI (Modo Interactivo)
-Inicia la aplicación de escritorio interactiva:
+The key is stored in your user settings file, never inside the repository:
+`%APPDATA%\mangatraductor\config.json` on Windows, `~/.config/mangatraductor/config.json` elsewhere
+(override with `MANGATRADUCTOR_CONFIG`). Without a key you can still OCR and type translations manually.
+
+## Usage
+
+### Desktop app
+
 ```bash
-python manga_translator_app.py
+mangatraductor-gui            # or: python manga_translator_app.py
 ```
-- Haz clic en **Open Image** para cargar una página de manga.
-- **Haz clic y arrastra** para dibujar un cuadro alrededor de la burbuja de texto en japonés que deseas traducir.
-- Espera un momento; la salida del OCR y la traducción aparecerán en el panel derecho.
-- Haz clic en **Replace Text in Image** para dibujar el texto traducido directamente sobre la imagen, cubriendo la burbuja original.
-- Haz clic en **Save Image** para guardar tu imagen traducida.
 
-### 2. Procesamiento por Lotes CLI (Modo Terminal)
-Para procesar un lote de imágenes rápidamente a través de la consola:
+1. **Open Image** (`Ctrl+O`) and pick a page; the rest of the folder becomes navigable.
+2. Drag a box around a speech bubble. The OCR text and translation appear on the right.
+3. Optionally edit the translation, then click **Replace Text in Image**.
+4. **Save Image** (`Ctrl+S`).
+
+### Command line
+
+Each image must contain **one cropped speech bubble** (the OCR model reads single bubbles, not full pages).
+
 ```bash
-python run_ocr.py
+mangatraductor ocr bubbles/ --target-lang ES --output results.csv
+mangatraductor ocr bubble1.png bubble2.png --no-translate
+mangatraductor check-key
 ```
-- Primero, coloca las imágenes que deseas procesar dentro de un directorio `images/` en la carpeta raíz.
-- Ejecuta el script y este iterará a través de todas las imágenes, realizando el OCR y la traducción, e imprimiendo los resultados directamente en la terminal.
+
+`python run_ocr.py` still processes every image in `./images` as before.
+
+## Project structure
+
+```
+mangatraductor/
+  gui.py        Tkinter app; OCR/translation run in worker threads, UI updates go through a queue
+  cli.py        argparse CLI: batch processing, JSON/CSV export, key check
+  ocr.py        lazy wrapper around the manga-ocr model + text post-processing
+  translate.py  DeepL client with timeouts and readable error messages
+  render.py     selection mapping, word wrap, font fitting and drawing (pure Pillow)
+  config.py     settings file and API key resolution
+  files.py      image discovery and natural sorting
+tests/          pytest suite (runs without PyTorch; GUI test is skipped without a display)
+```
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest
+ruff check .
+```
+
+CI runs lint and tests on Python 3.10, 3.12 and 3.13 for every push.
+
+## Limitations and roadmap
+
+- [ ] Automatic speech-bubble detection, so full pages can be processed in one click.
+- [ ] Inpainting instead of a white box, to preserve screentones behind the text.
+- [ ] Vertical text layout and per-bubble font/color options.
+- [ ] Batch typesetting of a whole chapter from the CLI.
+- [ ] Translation cache to avoid paying twice for repeated lines.
+
+## Credits
+
+- OCR model: [manga-ocr](https://github.com/kha-white/manga-ocr) by kha-white.
+- Translation: [DeepL API](https://www.deepl.com/pro-api).
+- Font: Anime Ace 2.0 by Blambot (see Blambot's license terms before redistributing).

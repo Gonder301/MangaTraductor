@@ -190,3 +190,5 @@ preprocessor_config.json
 
 # User Configuration (Secrets)
 user_config.json
+# Local manga pages used for testing (copyrighted material stays out of the repo)
+images/
