@@ -12,7 +12,8 @@ from typing import Protocol
 from PIL import Image
 
 DEFAULT_MODEL = "kha-white/manga-ocr-base"
-# Long bubbles are truncated with the library default; the manga-ocr reference uses 300.
+# Same limit as the model's own generation config and the manga-ocr reference; passed
+# explicitly so a custom --model with a shorter default does not cut long bubbles.
 MAX_NEW_TOKENS = 300
 
 
@@ -63,16 +64,20 @@ class MangaOCR:
         with self._lock:
             if self._model is not None:
                 return
+            # Missing optional packages surface as ImportError either here or inside
+            # from_pretrained (e.g. the tokenizer needs fugashi), so both are covered.
             try:
                 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+
+                processor = TrOCRProcessor.from_pretrained(self.model_name)
+                model = VisionEncoderDecoderModel.from_pretrained(self.model_name)
             except ImportError as exc:
                 raise OCRUnavailableError(
-                    'The OCR model needs PyTorch and Transformers. Install them with: '
+                    f"Missing OCR dependency ({exc}). Install them with: "
                     'pip install -e ".[ocr]"'
                 ) from exc
-
-            self._processor = TrOCRProcessor.from_pretrained(self.model_name)
-            self._model = VisionEncoderDecoderModel.from_pretrained(self.model_name)
+            self._processor = processor
+            self._model = model
 
     def recognize(self, image: Image.Image) -> str:
         self.load()

@@ -16,7 +16,8 @@ dependencies = [
 
 [project.optional-dependencies]
 # The OCR model needs PyTorch + Transformers; kept optional so tests and CI stay light.
-ocr = ["torch", "transformers>=4.30"]
+# fugashi + unidic-lite are required by the model's Japanese (MeCab) tokenizer.
+ocr = ["torch", "transformers>=4.30", "fugashi", "unidic-lite"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
@@ -25,8 +26,8 @@ mangatraductor = "mangatraductor.cli:main"
 [project.gui-scripts]
 mangatraductor-gui = "mangatraductor.gui:main"
 
-[tool.setuptools]
-packages = ["mangatraductor"]
+[tool.setuptools.packages.find]
+include = ["mangatraductor*"]
 
 [tool.setuptools.package-data]
 mangatraductor = ["fonts/*.ttf"]

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The `ocr` extra now installs `fugashi` and `unidic-lite`, which the model's Japanese
+  tokenizer requires; without them the model failed to load.
+- A missing dependency raised while loading the model now shows the install hint instead of a
+  traceback.
+- Packaging warning about the `fonts` folder (the font was already included in the wheel).
+
+### Corrected
+- The 0.2.0 note about long bubbles being truncated was wrong: the model's generation config
+  already allows 300 tokens. The explicit limit is kept for custom models.
+
 ## 0.2.0
 
 ### Changed
