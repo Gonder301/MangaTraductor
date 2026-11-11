@@ -103,6 +103,61 @@ def test_missing_ocr_dependencies_fail_once_with_install_hint(bubbles, capsys):
     assert '.[ocr]' in capsys.readouterr().err
 
 
+@pytest.fixture
+def counting_translator():
+    calls = []
+
+    class CountingTranslator(FakeTranslator):
+        def translate(self, text):
+            calls.append(text)
+            return super().translate(text)
+
+    CountingTranslator.calls = calls
+    return CountingTranslator
+
+
+def test_second_run_is_served_from_cache(bubbles, tmp_path, counting_translator, capsys):
+    def run_counting(*extra):
+        return cli.main(
+            ["ocr", str(bubbles), *extra],
+            ocr_factory=FakeOCR,
+            translator_factory=counting_translator,
+        )
+
+    assert run_counting() == 0
+    assert len(counting_translator.calls) == 3
+    assert (tmp_path / "translations.json").is_file()  # next to the isolated config file
+    capsys.readouterr()
+
+    out = tmp_path / "out.json"
+    assert run_counting("-o", str(out)) == 0
+    assert len(counting_translator.calls) == 3  # nothing new was sent to DeepL
+    assert "3 translation(s) from cache" in capsys.readouterr().out
+    assert json.loads(out.read_text(encoding="utf-8"))[0]["translation"] == "EN-US:テキスト12"
+
+    assert run_counting("-t", "ES") == 0  # another target language is a cache miss
+    assert len(counting_translator.calls) == 6
+
+
+def test_no_cache_always_calls_deepl_and_writes_nothing(bubbles, tmp_path, counting_translator):
+    for _ in range(2):
+        cli.main(
+            ["ocr", str(bubbles), "--no-cache"],
+            ocr_factory=FakeOCR,
+            translator_factory=counting_translator,
+        )
+    assert len(counting_translator.calls) == 6
+    assert not (tmp_path / "translations.json").exists()
+
+
+def test_clear_cache(bubbles, tmp_path, capsys):
+    run(["ocr", str(bubbles)])
+    capsys.readouterr()
+    assert run(["clear-cache"]) == 0
+    assert "Removed 3 cached translation(s)" in capsys.readouterr().out
+    assert not (tmp_path / "translations.json").exists()
+
+
 def test_check_key_success(capsys):
     assert run(["check-key"]) == 0
     output = capsys.readouterr().out

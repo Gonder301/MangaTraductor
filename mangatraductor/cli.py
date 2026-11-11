@@ -5,6 +5,7 @@ Examples::
     mangatraductor ocr bubbles/ --target-lang ES --output results.csv
     mangatraductor ocr bubble1.png bubble2.png --no-translate
     mangatraductor check-key
+    mangatraductor clear-cache
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from PIL import Image
 
 from . import __version__
 from . import config as cfg
+from .cache import CachedTranslator, TranslationCache, default_cache_path
 from .files import find_images, is_image
 from .ocr import DEFAULT_MODEL, MangaOCR, OCREngine, OCRUnavailableError
 from .translate import (
@@ -130,10 +132,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ocr.add_argument("--source-lang", default=None, help="DeepL source language (default: auto)")
     ocr.add_argument("--no-translate", action="store_true", help="only run OCR")
+    ocr.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="always ask DeepL; do not read or update the translation cache",
+    )
     ocr.add_argument("-o", "--output", type=Path, help="save results to a .json or .csv file")
     ocr.add_argument("--model", default=DEFAULT_MODEL, help="Hugging Face OCR model name")
 
     sub.add_parser("check-key", help="verify that the configured DeepL API key works")
+    sub.add_parser("clear-cache", help="delete all cached translations")
     return parser
 
 
@@ -150,13 +158,21 @@ def _run_ocr(
         print("No supported images found.", file=sys.stderr)
         return 2
 
-    translator = None
+    translator: Translator | None = None
+    cached: CachedTranslator | None = None
     if not args.no_translate:
         api_key = cfg.resolve_api_key()
         if api_key:
             translator = translator_factory(
                 api_key, target_lang=args.target_lang, source_lang=args.source_lang
             )
+            if not args.no_cache:
+                translator = cached = CachedTranslator(
+                    translator,
+                    TranslationCache(default_cache_path()),
+                    target_lang=args.target_lang,
+                    source_lang=args.source_lang,
+                )
         else:
             print(
                 f"No DeepL API key found (set {cfg.API_KEY_ENV_VAR} or use the GUI settings); "
@@ -178,8 +194,16 @@ def _run_ocr(
         write_results(results, args.output)
         print(f"\nSaved results to {args.output}")
     failures = sum(1 for r in results if r.error)
-    print(f"\nDone: {len(results) - failures} ok, {failures} with errors.")
+    from_cache = f" ({cached.hits} translation(s) from cache)" if cached and cached.hits else ""
+    print(f"\nDone: {len(results) - failures} ok, {failures} with errors{from_cache}.")
     return 1 if failures else 0
+
+
+def _clear_cache() -> int:
+    cache = TranslationCache(default_cache_path())
+    removed = cache.clear()
+    print(f"Removed {removed} cached translation(s) from {cache.path}")
+    return 0
 
 
 def _check_key(translator_factory: TranslatorFactory) -> int:
@@ -212,6 +236,8 @@ def main(
     args = build_parser().parse_args(argv)
     if args.command == "ocr":
         return _run_ocr(args, ocr_factory, translator_factory)
+    if args.command == "clear-cache":
+        return _clear_cache()
     return _check_key(translator_factory)
 
 
