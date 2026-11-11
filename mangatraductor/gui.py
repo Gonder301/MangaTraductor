@@ -15,6 +15,7 @@ from typing import Any
 from PIL import Image, ImageTk
 
 from . import config as cfg
+from .cache import CachedTranslator, TranslationCache, default_cache_path
 from .files import DIALOG_PATTERN, find_images
 from .ocr import MangaOCR, OCREngine
 from .render import Box, canvas_to_image_box, draw_translation
@@ -66,6 +67,7 @@ class MangaTranslatorApp:
         self.font_path: str | None = self.settings.get("font_path")
         self.ocr = ocr_engine if ocr_engine is not None else MangaOCR()
         self.translator_factory = translator_factory
+        self.translation_cache = TranslationCache(default_cache_path(config_path))
 
         self.original_image: Image.Image | None = None
         self.tk_image: ImageTk.PhotoImage | None = None
@@ -507,12 +509,15 @@ class MangaTranslatorApp:
                 self._show_translation, job, "", "No DeepL API key configured (API Key Settings)."
             )
             return
+        translator = CachedTranslator(
+            self.translator_factory(api_key, target_lang), self.translation_cache, target_lang
+        )
         try:
-            translated = self.translator_factory(api_key, target_lang).translate(text)
+            translated = translator.translate(text)
         except TranslationError as exc:
             self._call_in_ui(self._show_translation, job, "", str(exc))
             return
-        self._call_in_ui(self._show_translation, job, translated, None)
+        self._call_in_ui(self._show_translation, job, translated, None, translator.hits > 0)
 
     def _show_ocr_text(self, job: int, text: str) -> None:
         if job != self._job:
@@ -521,7 +526,9 @@ class MangaTranslatorApp:
         self._set_text(self.txt_translation, "")
         self.log(f"OCR: {text}")
 
-    def _show_translation(self, job: int, text: str, error: str | None) -> None:
+    def _show_translation(
+        self, job: int, text: str, error: str | None, cached: bool = False
+    ) -> None:
         if job != self._job:
             return
         self._set_text(self.txt_translation, text)
@@ -530,7 +537,7 @@ class MangaTranslatorApp:
             self.log(error)
         else:
             self._set_status("Ready", "green")
-            self.log(f"Translation: {text}")
+            self.log(f"Translation{' (from cache)' if cached else ''}: {text}")
 
     def _show_error(self, job: int, message: str) -> None:
         if job != self._job:
@@ -589,7 +596,7 @@ class MangaTranslatorApp:
     def open_settings(self) -> None:
         win = tk.Toplevel(self.root)
         win.title("DeepL API Key")
-        win.geometry("440x170")
+        win.geometry("440x220")
         win.transient(self.root)
 
         tk.Label(win, text="DeepL API Key:").pack(pady=5)
@@ -609,7 +616,21 @@ class MangaTranslatorApp:
             win.destroy()
 
         tk.Button(win, text="Save", command=save).pack(pady=10)
+
+        def cache_label() -> str:
+            return f"Clear translation cache ({len(self.translation_cache)} saved)"
+
+        def clear_cache() -> None:
+            self.clear_translation_cache()
+            clear_button.config(text=cache_label())
+
+        clear_button = tk.Button(win, text=cache_label(), command=clear_cache)
+        clear_button.pack()
         entry.focus_set()
+
+    def clear_translation_cache(self) -> None:
+        removed = self.translation_cache.clear()
+        self.log(f"Cleared {removed} cached translation(s).")
 
 
 def main() -> None:

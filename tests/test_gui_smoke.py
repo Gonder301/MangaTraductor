@@ -89,6 +89,49 @@ def test_select_translate_replace_undo(app, tmp_path):
     assert app.original_image.tobytes() == before
 
 
+def test_repeated_bubble_is_served_from_cache(app, tmp_path):
+    calls = []
+
+    class CountingTranslator(FakeTranslator):
+        def translate(self, text):
+            calls.append(text)
+            return super().translate(text)
+
+    app.translator_factory = CountingTranslator
+    app.load_image(make_pages(tmp_path, 1)[0])
+
+    def log():
+        return app.txt_log.get("1.0", "end")
+
+    for _ in range(2):
+        app.on_button_press(event(40 * app.scale, 40 * app.scale))
+        app.on_button_release(event(200 * app.scale, 160 * app.scale))
+        assert pump(app, lambda: "Ready" in app.lbl_status.cget("text"))
+        app.txt_translation.delete("1.0", "end")
+
+    assert calls == ["やめろ"]
+    assert "Translation (from cache): Stop it!" in log()
+    assert (tmp_path / "translations.json").is_file()  # next to the test's config file
+
+    app.clear_translation_cache()
+    assert len(app.translation_cache) == 0
+    assert "Cleared 1 cached translation(s)." in log()
+
+
+def test_settings_dialog_clears_the_cache(app):
+    app.translation_cache.put("やめろ", "EN-US", None, "Stop it!")
+    app.open_settings()
+    dialog = next(w for w in app.root.winfo_children() if isinstance(w, tk.Toplevel))
+    button = next(
+        w for w in dialog.winfo_children()
+        if isinstance(w, tk.Button) and w.cget("text").startswith("Clear translation cache")
+    )
+    assert button.cget("text") == "Clear translation cache (1 saved)"
+    button.invoke()
+    assert button.cget("text") == "Clear translation cache (0 saved)"
+    assert len(app.translation_cache) == 0
+
+
 def test_navigation_resets_selection(app, tmp_path):
     first, second = make_pages(tmp_path)
     app._scan_folder(first)
