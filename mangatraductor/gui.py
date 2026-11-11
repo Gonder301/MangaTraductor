@@ -281,7 +281,7 @@ class MangaTranslatorApp:
     def _load_model(self) -> None:
         try:
             self.ocr.load()  # type: ignore[attr-defined]
-        except Exception as exc:  # report any download/runtime failure to the user
+        except Exception as exc:  # noqa: BLE001 - worker thread: report any failure in the UI
             message = str(exc)
             self._call_in_ui(self._on_model_failed, message)
             return
@@ -497,7 +497,7 @@ class MangaTranslatorApp:
         """Worker thread: OCR then translate. Never touches Tk directly."""
         try:
             text = self.ocr.recognize(crop)
-        except Exception as exc:  # any model failure is shown, not raised in the thread
+        except Exception as exc:  # noqa: BLE001 - worker thread: show the error, don't crash
             self._call_in_ui(self._show_error, job, f"OCR failed: {exc}")
             return
         self._call_in_ui(self._show_ocr_text, job, text)

@@ -73,7 +73,7 @@ def process_images(
         try:
             with Image.open(path) as img:
                 result.text = ocr.recognize(img.convert("RGB"))
-        except Exception as exc:  # unreadable image or model error: record and continue
+        except Exception as exc:  # noqa: BLE001 - one bad image or model error must not stop the batch
             result.error = f"OCR failed: {exc}"
         if translator is not None and result.error is None:
             try:
