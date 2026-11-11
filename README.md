@@ -4,6 +4,13 @@ Desktop app and CLI to **OCR Japanese manga speech bubbles, translate them with 
 
 Select a bubble with the mouse → the text is recognized with a manga-specific OCR model → DeepL translates it → the original text is covered and the translation is drawn at the largest font size that fits.
 
+![Before and after: Japanese speech bubbles replaced by typeset English translations](docs/demo.png)
+
+<sub>Sample page drawn for this README (no copyrighted manga). Each bubble, vertical or horizontal,
+was read by the real OCR model and typeset by the app's renderer; the English lines are the
+script's reference translations. Regenerate it with `python docs/make_demo.py` (uses DeepL when
+a key is configured).</sub>
+
 ## Features
 
 **Desktop app**
@@ -96,6 +103,7 @@ mangatraductor/
   config.py     settings file and API key resolution
   files.py      image discovery and natural sorting
 tests/          pytest suite (runs without PyTorch; GUI test is skipped without a display)
+docs/           make_demo.py draws a sample page and builds the README image with the real model
 ```
 
 ## Development
