@@ -7,9 +7,8 @@ Select a bubble with the mouse → the text is recognized with a manga-specific 
 ![Before and after: Japanese speech bubbles replaced by typeset English translations](docs/demo.png)
 
 <sub>Sample page drawn for this README (no copyrighted manga). Each bubble, vertical or horizontal,
-was read by the real OCR model and typeset by the app's renderer; the English lines are the
-script's reference translations. Regenerate it with `python docs/make_demo.py` (uses DeepL when
-a key is configured).</sub>
+was read by the real OCR model, translated by DeepL and typeset by the app's renderer.
+Regenerate it with `python docs/make_demo.py`.</sub>
 
 ## Features
 

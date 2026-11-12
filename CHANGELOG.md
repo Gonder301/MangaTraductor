@@ -10,7 +10,8 @@
   **Clear translation cache** button in the app's API Key Settings.
 - The CLI summary and the app log say when a translation came from the cache.
 - Before/after image in the README, built by `docs/make_demo.py`: it draws a sample page
-  (no copyrighted manga), reads each bubble with the real OCR model and typesets the result.
+  (no copyrighted manga), reads each bubble with the real OCR model, translates it with DeepL
+  and typesets the result.
 
 ### Fixed
 - The `ocr` extra now installs `fugashi` and `unidic-lite`, which the model's Japanese
